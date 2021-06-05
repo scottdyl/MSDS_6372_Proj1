@@ -1,0 +1,133 @@
+---
+title: "Models proj 1"
+output: html_document
+---
+```{R}
+library(dplyr)
+library(ggplot2)
+library(rworldmap)
+library(corrplot)
+library(tidyr)
+library(countrycode)
+library(PerformanceAnalytics)
+library(naniar)
+#data
+# Read in dataset
+lifeExpec = read.csv("Life Expectancy Data.csv",header = TRUE)
+#lifeExpec = read.csv(file.choose())
+
+# Observe dataset in general
+dim(lifeExpec)
+str(lifeExpec)
+head(lifeExpec)
+
+# Add continent column to the dataset
+lifeExpec$continent <- countrycode(sourcevar = lifeExpec$Country,
+                                   origin = "country.name",
+                                   destination = "continent")
+
+# Edit 3 country names
+lifeExpec$CountrytoMatch <- as.character(lifeExpec$Country)
+lifeExpec$CountrytoMatch[lifeExpec$CountrytoMatch == "Côte d'Ivoire"] <- "Cote d'Ivoire"
+lifeExpec$CountrytoMatch[lifeExpec$CountrytoMatch == "Cabo Verde"] <- "Cape Verde"
+lifeExpec$CountrytoMatch[lifeExpec$CountrytoMatch == "Czechia"] <- "Czech Republic"
+
+# Create summary table
+summary(lifeExpec)
+
+unique(lifeExpec$Country) # There are 193 countries in total
+unique(lifeExpec$Year) # 16 years of data collection from 2000 to 2015
+
+# There are 10 countries that do not have 16 years of data.  They all have only 2013 data record
+lifeExpec %>% group_by(Country) %>% 
+  filter(n() != 16)
+
+# Excluded countries with < 16 years of data collection from the dataset
+lifeExpec <- lifeExpec %>% 
+  group_by(Country) %>% 
+  filter(n() == 16)
+
+# Check if there is any country with duplicated year records
+lifeExpec %>% group_by(Country, Year) %>% 
+  filter(n() > 1) %>% 
+  summarize(n=n()) # There is none
+
+```
+
+
+```{R}
+#data has been cleaned
+#split the data into test and train
+library(caret)
+set.seed(3456)
+trainIndex <- createDataPartition(lifeExpec$Life.expectancy, p = .7,
+                                  list = FALSE,
+                                  times = 1)
+Train <- lifeExpec[ trainIndex,]
+Test <- lifeExpec[-trainIndex,]
+
+
+
+```
+
+```{R manual Model}
+#manual model after data has been cleaned. This was decided on personal opinion
+
+lifeExpec<-na.omit(lifeExpec)
+#full model
+model_num <- lm(Life.expectancy ~ Adult.Mortality+percentage.expenditure+BMI+Polio+Diphtheria+HIV.AIDS+Income.composition.of.resources+Schooling, data = lifeExpec)
+summary(model_num)
+#train model
+model_num_train <- lm(Life.expectancy ~ Adult.Mortality+percentage.expenditure+BMI+Polio+Diphtheria+HIV.AIDS+Income.composition.of.resources+Schooling, data = Test)
+summary(model_num_train)
+
+summary(model_num)
+
+
+```
+
+
+
+```{R Stepwise model}
+
+# this code runs the stepwise selection
+lifeExpec<-na.omit(lifeExpec)
+step.wise<-step(lm(Life.expectancy ~.,data = lifeExpec),direction="both")
+summary(step.wise)
+
+final_lm<-lm(formula = Life.expectancy ~ Country + Year + infant.deaths + 
+    Alcohol + Hepatitis.B + under.five.deaths + HIV.AIDS + thinness.5.9.years + 
+    Income.composition.of.resources + Schooling, data = lifeExpec)
+summary(final_lm)
+plot(final_lm)
+
+#this was the best selected model from stepwise
+
+#train stepwise
+final_lm_train<-lm(formula = Life.expectancy ~ Country + Year + infant.deaths + 
+    Alcohol + Hepatitis.B + under.five.deaths + HIV.AIDS + thinness.5.9.years + 
+    Income.composition.of.resources + Schooling, data = Train)
+summary(final_lm_train)
+
+```
+
+```{R test train test}
+
+
+
+#testing the two models againts test and train sets
+manual_pred<- predict(model_num_train,Test)
+summary(manual_pred)
+step_pred<- predict(final_lm_train,Test)
+summary(step_pred)
+
+
+```
+
+
+```{R}
+#kNN
+#need to figure out the perfect set of K then run the knn
+
+
+````
