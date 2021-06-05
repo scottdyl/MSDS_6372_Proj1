@@ -1,0 +1,74 @@
+---
+title: "Stats 2 Project 1"
+author: "Michael Burgess"
+date: "5/31/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+#data import
+life_exp <- read.csv(choose.files(), header = T, sep = ",")
+
+colSums(is.na(life_exp))
+
+missing_data <- life_exp[rowSums(is.na(life_exp)) > 0,]
+write.csv(missing_data, choose.files())
+
+data_2015 <- life_exp[life_exp$Year == 2015,]
+colSums(is.na(data_2015))
+
+dim(data_2015)
+
+#drop all the missing data so we can look at correlation and possibly make predicitions for missing values
+not_missing <- life_exp %>% drop_na()
+
+#convert character columns to factors
+not_missing[sapply(not_missing, is.character)] <- lapply(not_missing[sapply(not_missing, is.character)], 
+                                       as.factor)
+
+#remove the first 3 columns since these don't contain predictors
+pairs_data <- not_missing[,-c(1:3)]
+
+#plot relationship between variables
+pairs(pairs_data, lower.panel=NULL)
+```
+
+## 177 of 183 countries in 2015 are missing Alcohol data
+
+## infant deaths and deaths under 5 redundant
+## thinness 1-19 and 5-9 are redundant
+## adult mortality and hiv.aids appear correlated
+## gdp and percent expendatre are correlated
+## polio and diptheria may be coorelated 
+## maybe some linear relationship between alcohol and schooling
+## bmi may be correlated with alchol and income composition
+## income composition and schooling strong correlation
+## strong linear correlation between life exptancy and income and 
+## schooling
+## BMI is broken almost 150 at nearly 60 BMI
+
+```{r}
+#using data without NAs here trying to get something clean so we can go back and #predict NA values for the main dataset
+
+#remove redundant columns
+non_redundant <- pairs_data[,-c(2,3)]
+
+#remove BMI due to errors
+non_redundant <- non_redundant[,-c(6)]
+
+#remove non-sensical outliers, i.e. values over 1000 for deaths per 1000 people
+
+non_redundant <- non_redundant %>% filter(under.five.deaths <= 1000)
+non_redundant <- non_redundant %>% filter(Measles <= 1000)
+non_redundant <- non_redundant %>% filter(HIV.AIDS <= 1000)
+
+pairs(non_redundant, lower.panel = NULL)
+```
