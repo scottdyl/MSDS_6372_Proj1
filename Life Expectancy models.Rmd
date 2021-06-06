@@ -16,41 +16,26 @@ library(naniar)
 lifeExpec = read.csv("Life Expectancy Data.csv",header = TRUE)
 #lifeExpec = read.csv(file.choose())
 
-# Observe dataset in general
-dim(lifeExpec)
-str(lifeExpec)
+# Look at data
 head(lifeExpec)
 
-# Add continent column to the dataset
-lifeExpec$continent <- countrycode(sourcevar = lifeExpec$Country,
-                                   origin = "country.name",
-                                   destination = "continent")
 
-# Edit 3 country names
-lifeExpec$CountrytoMatch <- as.character(lifeExpec$Country)
-lifeExpec$CountrytoMatch[lifeExpec$CountrytoMatch == "Côte d'Ivoire"] <- "Cote d'Ivoire"
-lifeExpec$CountrytoMatch[lifeExpec$CountrytoMatch == "Cabo Verde"] <- "Cape Verde"
-lifeExpec$CountrytoMatch[lifeExpec$CountrytoMatch == "Czechia"] <- "Czech Republic"
-
-# Create summary table
+# summarize the data
 summary(lifeExpec)
 
 unique(lifeExpec$Country) # There are 193 countries in total
 unique(lifeExpec$Year) # 16 years of data collection from 2000 to 2015
 
-# There are 10 countries that do not have 16 years of data.  They all have only 2013 data record
+# Looking for countries that don't have a full set of 16 observations
+# n = 16 is already pretty low so having less may present issues
 lifeExpec %>% group_by(Country) %>% 
   filter(n() != 16)
 
-# Excluded countries with < 16 years of data collection from the dataset
+# remove the missing values
 lifeExpec <- lifeExpec %>% 
   group_by(Country) %>% 
   filter(n() == 16)
 
-# Check if there is any country with duplicated year records
-lifeExpec %>% group_by(Country, Year) %>% 
-  filter(n() > 1) %>% 
-  summarize(n=n()) # There is none
 
 ```
 
@@ -93,11 +78,20 @@ summary(model_num)
 # this code runs the stepwise selection
 lifeExpec = read.csv("Life Expectancy Data.csv",header = TRUE)
 
+# remove NA and run a stepwise selection
 lifeExpec<-na.omit(lifeExpec)
 step.wise<-step(lm(Life.expectancy ~.,data = lifeExpec),direction="both")
 summary(step.wise)
 
-final_lm<-lm(formula = Life.expectancy ~ Year + infant.deaths + 
+#best model but the QQ plot looks suspictios
+final_lm<-lm(formula = Life.expectancy ~ Country + Year + infant.deaths + 
+    Alcohol + Hepatitis.B + under.five.deaths + HIV.AIDS + thinness.5.9.years + 
+    Income.composition.of.resources + Schooling, data = lifeExpec)
+summary(final_lm)
+plot(final_lm)
+
+#removed country and QQ plot looks better - AIC and Rsquare almost unaffected
+final_lm<-lm(formula = Life.expectancy ~  Year + infant.deaths + 
     Alcohol + Hepatitis.B + under.five.deaths + HIV.AIDS + thinness.5.9.years + 
     Income.composition.of.resources + Schooling, data = lifeExpec)
 summary(final_lm)
@@ -105,42 +99,7 @@ plot(final_lm)
 
 #this was the best selected model from stepwise
 
-#train stepwise
-final_lm_train<-lm(formula = Life.expectancy ~ Year + infant.deaths + 
-    Alcohol + Hepatitis.B + under.five.deaths + HIV.AIDS + thinness.5.9.years + 
-    Income.composition.of.resources + Schooling, data = Train)
-summary(final_lm_train)
-
-```
-
-```{R test Train test}
-
-
-
-#testing the two models againts test and Train sets
-manual_pred<- predict(model_num_Train,Test)
-summary(manual_pred)
-step_pred<- predict(final_lm_Train,Test)
-summary(step_pred)
-
 
 ```
 
 
-```{R}
-#kNN
-#need to figure out the perfect set of K then run the knn
-
-accs = data.frame(accuracy = numeric(75), k = numeric(75))
-
-for(i in 1:75)
-{
-  classifications = knn(Train[,c(7,8)],test[,c(7,8)],Train$General_Style, prob = TRUE, k = i)
-  table(test$General_Style,classifications)
-  CM = confusionMatrix(table(test$General_Style,classifications))
-  accs$accuracy[i] = CM$overall[1]
-  accs$k[i] = i
-}
-
-
-````
