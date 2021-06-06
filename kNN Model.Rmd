@@ -63,6 +63,7 @@ old_knn_25<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=25)
 old_knn_50<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=50)
 old_knn_50<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=100)
 old_knn_50<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=250)
+new_knn_3 <- knnreg(Life.expectancy ~ ., data = lifeExpec_f, k = 3)
 
 #making an RMSE funtion
 rmse = function(actual, predicted) {
@@ -107,5 +108,13 @@ colnames(knn_results) = c("k", "Train RMSE", "Test RMSE", "Fit?")
 
 # display results
 knitr::kable(knn_results, escape = FALSE, booktabs = TRUE)
+
+#three appears to be the best
+#plot 3 with predictions
+predict_3<-predict(new_knn_3,life_test)
+plot(life_test$Life.expectancy,ylab= 'Prediction vs. Actual')
+points(predict_3, col = "red")
+grid()
+
 
 ```
