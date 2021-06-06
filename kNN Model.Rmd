@@ -40,13 +40,13 @@ lifeExpec_f$Hepatitis.B<- as.numeric(lifeExpec_f$Hepatitis.B)
 lifeExpec_f$under.five.deaths<- as.numeric(lifeExpec_f$under.five.deaths)
 
 #splitting data into test and train
-train_split  <- sample(nrow(lifeExpec_f), size = 0.85 * nrow(lifeExpec_f))
+train_split  <- sample(nrow(lifeExpec_f), size = 0.8 * nrow(lifeExpec_f))
 life_train <- lifeExpec_f[train_split,]
 life_test <- lifeExpec_f[-train_split,]
-
+#removing an NA just in case
 life_test<-na.omit(life_test)
 life_train<-na.omit(life_train)
-
+#looking for NAs still
 which(is.na(life_test))
 which(is.na(life_train))
 
@@ -54,6 +54,9 @@ which(is.na(life_train))
 #running the old way
 #that worked now to test multipal k options
 old_knn_1<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=1)
+old_knn_2<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=2)
+old_knn_3<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=3)
+old_knn_4<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=4)
 old_knn_5<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=5)
 old_knn_10<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=10)
 old_knn_25<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=25)
@@ -68,15 +71,15 @@ rmse = function(actual, predicted) {
 
 #this functions pulls out the prediction for a comparison
 make_knn_pred = function(k = 1, training, predicting) {
-  pred = FNN::knn.reg(train = life_train, 
-                      test = life_test, 
-                      y = lifeExpec_f$Life.expectancy, k = k)$pred
-  act  = lifeExpec_f$Life.expectancy
+  pred = FNN::knn.reg(train = training, 
+                      test = predicting, 
+                      y = training$Life.expectancy, k = k)$pred
+  act  = predicting$Life.expectancy
   rmse(predicted = pred, actual = act)
 }
 
 #define K values
-k = c(1, 5, 10, 25, 50,100,250)
+k = c(1,2,3,4, 5, 10, 25, 50,100,250)
 
 # get requested train RMSEs
 knn_trn_rmse = sapply(k, make_knn_pred, 
