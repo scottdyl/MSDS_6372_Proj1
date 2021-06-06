@@ -57,14 +57,14 @@ lifeExpec %>% group_by(Country, Year) %>%
 
 ```{R}
 #data has been cleaned
-#split the data into test and train
+#split the data into test and Train
 library(caret)
 set.seed(3456)
-trainIndex <- createDataPartition(lifeExpec$Life.expectancy, p = .7,
+TrainIndex <- createDataPartition(lifeExpec$Life.expectancy, p = .7,
                                   list = FALSE,
                                   times = 1)
-Train <- lifeExpec[ trainIndex,]
-Test <- lifeExpec[-trainIndex,]
+Train <- lifeExpec[ TrainIndex,]
+Test <- lifeExpec[-TrainIndex,]
 
 
 
@@ -77,9 +77,9 @@ lifeExpec<-na.omit(lifeExpec)
 #full model
 model_num <- lm(Life.expectancy ~ Adult.Mortality+percentage.expenditure+BMI+Polio+Diphtheria+HIV.AIDS+Income.composition.of.resources+Schooling, data = lifeExpec)
 summary(model_num)
-#train model
-model_num_train <- lm(Life.expectancy ~ Adult.Mortality+percentage.expenditure+BMI+Polio+Diphtheria+HIV.AIDS+Income.composition.of.resources+Schooling, data = Test)
-summary(model_num_train)
+#Train model
+model_num_Train <- lm(Life.expectancy ~ Adult.Mortality+percentage.expenditure+BMI+Polio+Diphtheria+HIV.AIDS+Income.composition.of.resources+Schooling, data = Test)
+summary(model_num_Train)
 
 summary(model_num)
 
@@ -91,11 +91,13 @@ summary(model_num)
 ```{R Stepwise model}
 
 # this code runs the stepwise selection
+lifeExpec = read.csv("Life Expectancy Data.csv",header = TRUE)
+
 lifeExpec<-na.omit(lifeExpec)
 step.wise<-step(lm(Life.expectancy ~.,data = lifeExpec),direction="both")
 summary(step.wise)
 
-final_lm<-lm(formula = Life.expectancy ~ Country + Year + infant.deaths + 
+final_lm<-lm(formula = Life.expectancy ~ Year + infant.deaths + 
     Alcohol + Hepatitis.B + under.five.deaths + HIV.AIDS + thinness.5.9.years + 
     Income.composition.of.resources + Schooling, data = lifeExpec)
 summary(final_lm)
@@ -104,21 +106,21 @@ plot(final_lm)
 #this was the best selected model from stepwise
 
 #train stepwise
-final_lm_train<-lm(formula = Life.expectancy ~ Country + Year + infant.deaths + 
+final_lm_train<-lm(formula = Life.expectancy ~ Year + infant.deaths + 
     Alcohol + Hepatitis.B + under.five.deaths + HIV.AIDS + thinness.5.9.years + 
     Income.composition.of.resources + Schooling, data = Train)
 summary(final_lm_train)
 
 ```
 
-```{R test train test}
+```{R test Train test}
 
 
 
-#testing the two models againts test and train sets
-manual_pred<- predict(model_num_train,Test)
+#testing the two models againts test and Train sets
+manual_pred<- predict(model_num_Train,Test)
 summary(manual_pred)
-step_pred<- predict(final_lm_train,Test)
+step_pred<- predict(final_lm_Train,Test)
 summary(step_pred)
 
 
@@ -128,6 +130,17 @@ summary(step_pred)
 ```{R}
 #kNN
 #need to figure out the perfect set of K then run the knn
+
+accs = data.frame(accuracy = numeric(75), k = numeric(75))
+
+for(i in 1:75)
+{
+  classifications = knn(Train[,c(7,8)],test[,c(7,8)],Train$General_Style, prob = TRUE, k = i)
+  table(test$General_Style,classifications)
+  CM = confusionMatrix(table(test$General_Style,classifications))
+  accs$accuracy[i] = CM$overall[1]
+  accs$k[i] = i
+}
 
 
 ````
