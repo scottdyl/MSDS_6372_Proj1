@@ -1,0 +1,106 @@
+---
+title: "kNN Model"
+output: html_document
+---
+```{R}
+library(FNN)
+library(tidyverse)
+library(caret)
+library(car)
+# we will start by using what our stepwise model gave us
+lifeExpec_f<- subset(lifeExpec, select = c(Life.expectancy, Year , infant.deaths, Alcohol, Hepatitis.B, under.five.deaths, HIV.AIDS, thinness.5.9.years, Income.composition.of.resources, Schooling))
+lifeExpec_f<-na.omit(lifeExpec_f)
+head(lifeExpec_f)
+
+#checking VIF to avoid multicolinearity
+final_lm<-lm(formula = Life.expectancy ~  Year + infant.deaths + 
+    Alcohol + Hepatitis.B + under.five.deaths + HIV.AIDS + thinness.5.9.years + 
+    Income.composition.of.resources + Schooling, data = lifeExpec)
+vif(final_lm)
+
+#removing infant.deaths due to strong corlation with deaths under 5
+lifeExpec_f<- subset(lifeExpec, select = c(Life.expectancy, Year , Alcohol, Hepatitis.B, under.five.deaths, HIV.AIDS, thinness.5.9.years, Income.composition.of.resources, Schooling))
+head(lifeExpec_f)
+
+
+#based on innital EDA we should log transform and replace missing values with median
+# log transform should be one on: hiv aids
+# replace missing with median. we chose median since it is resistant to outliars and given our cook's D plot from obj 1 we saw some potential outliars
+lifeExpec_f$HIV.AIDS[is.na(lifeExpec_f$HIV.AIDS)]<-median(lifeExpec_f$HIV.AIDS,na.rm=T)
+lifeExpec_f$HIV.AIDS
+lifeExpec_f$hiv_aids_log <- log(lifeExpec_f$HIV.AIDS)
+
+#checking class of the varables:
+lapply(lifeExpec_f,class)
+
+#kNN was not working with non numeric so we will transform all int to numeric variables here
+lifeExpec_f$Life.expectancy<- as.numeric(lifeExpec_f$Life.expectancy)
+lifeExpec_f$Year<- as.numeric(lifeExpec_f$Year)
+lifeExpec_f$Hepatitis.B<- as.numeric(lifeExpec_f$Hepatitis.B)
+lifeExpec_f$under.five.deaths<- as.numeric(lifeExpec_f$under.five.deaths)
+
+#splitting data into test and train
+train_split  <- sample(nrow(lifeExpec_f), size = 0.85 * nrow(lifeExpec_f))
+life_train <- lifeExpec_f[train_split,]
+life_test <- lifeExpec_f[-train_split,]
+
+life_test<-na.omit(life_test)
+life_train<-na.omit(life_train)
+
+which(is.na(life_test))
+which(is.na(life_train))
+
+# where are two formuals I found for knn reg one is knn.reg and one is knnreg
+#running the old way
+#that worked now to test multipal k options
+old_knn_1<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=1)
+old_knn_5<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=5)
+old_knn_10<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=10)
+old_knn_25<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=25)
+old_knn_50<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=50)
+
+#making an RMSE funtion
+rmse = function(actual, predicted) {
+  sqrt(mean((actual - predicted) ^ 2))
+}
+
+#this functions pulls out the prediction for a comparison
+make_knn_pred = function(k = 1, training, predicting) {
+  pred = FNN::knn.reg(train = life_train, 
+                      test = life_test, 
+                      y = lifeExpec_f$Life.expectancy, k = k)$pred
+  act  = lifeExpec_f$Life.expectancy
+  rmse(predicted = pred, actual = act)
+}
+
+#define K values
+k = c(1, 5, 10, 25, 50)
+
+# get requested train RMSEs
+knn_trn_rmse = sapply(k, make_knn_pred, 
+                      training = life_train, 
+                      predicting = life_train$Life.expectancy)
+# get requested test RMSEs
+knn_tst_rmse = sapply(k, make_knn_pred, 
+                      training = life_test, 
+                      predicting = life_test$Life.expectancy)
+
+# determine "best" k
+best_k = k[which.min(knn_tst_rmse)]
+
+# find overfitting, underfitting, and "best"" k
+fit_status = ifelse(k < best_k, "Over", ifelse(k == best_k, "Best", "Under"))
+
+# summerize the results
+knn_results = data.frame(
+  k,
+  round(knn_trn_rmse, 2),
+  round(knn_tst_rmse, 2),
+  fit_status
+)
+colnames(knn_results) = c("k", "Train RMSE", "Test RMSE", "Fit?")
+
+# display results
+knitr::kable(knn_results, escape = FALSE, booktabs = TRUE)
+
+```
