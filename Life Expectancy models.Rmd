@@ -85,7 +85,7 @@ summary(step.wise)
 
 #best model but the QQ plot looks suspictios
 final_lm<-lm(formula = Life.expectancy ~ Country + Year + infant.deaths + 
-    Alcohol + Hepatitis.B + under.five.deaths + HIV.AIDS + thinness.5.9.years + 
+    Alcohol + Hepatitis.B + under.five.deaths + log(HIV.AIDS) + thinness.5.9.years + 
     Income.composition.of.resources + Schooling, data = lifeExpec)
 summary(final_lm)
 plot(final_lm)
