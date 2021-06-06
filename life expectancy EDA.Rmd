@@ -113,6 +113,8 @@ reg.fwd=regsubsets(LifeExpectancy~Year+Status+AdultMortality+Alcohol+PercentExpe
 summary(reg.fwd)$adjr2
 summary(reg.fwd)$bic
 
+
+
 ```
 
 
