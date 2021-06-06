@@ -58,6 +58,8 @@ old_knn_5<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=5)
 old_knn_10<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=10)
 old_knn_25<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=25)
 old_knn_50<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=50)
+old_knn_50<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=100)
+old_knn_50<-knn.reg(life_train,life_test,y= lifeExpec_f$Life.expectancy,k=250)
 
 #making an RMSE funtion
 rmse = function(actual, predicted) {
@@ -74,16 +76,16 @@ make_knn_pred = function(k = 1, training, predicting) {
 }
 
 #define K values
-k = c(1, 5, 10, 25, 50)
+k = c(1, 5, 10, 25, 50,100,250)
 
 # get requested train RMSEs
 knn_trn_rmse = sapply(k, make_knn_pred, 
                       training = life_train, 
-                      predicting = life_train$Life.expectancy)
+                      predicting = life_train)
 # get requested test RMSEs
 knn_tst_rmse = sapply(k, make_knn_pred, 
-                      training = life_test, 
-                      predicting = life_test$Life.expectancy)
+                      training = life_train, 
+                      predicting = life_test)
 
 # determine "best" k
 best_k = k[which.min(knn_tst_rmse)]
