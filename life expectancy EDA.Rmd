@@ -1,0 +1,123 @@
+---
+title: "lifeexpectancyEDA"
+author: "Ryan"
+date: "6/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(dbplyr)
+library(dplyr)
+library(plyr)
+library(ggplot2)
+library(skimr)
+library(tidyverse)
+library(DataExplorer)
+library(naniar)
+library(Matrix)
+library(foreach)
+library(data.table)
+library(zoo)
+library(magrittr)
+library(car)
+library(leaps)
+
+#read in life expectancy data
+life <- read.csv("D:/Users/Ryan/SMU classwork/MSDS_6372/project1/Life Expectancy Data.csv",header=T,stringsAsFactors = TRUE)
+View(life)
+
+#EDA. Additional Notes in google doc https://docs.google.com/document/d/1K5F6ZVjMX41AtNkjwKb9fgZVyv4kvE68epR3JeLKyOo/edit
+
+summary(life)
+life %>% skim()
+
+life %>% plot_missing() + ggtitle("missing values per column")
+life %>% plot_correlation() + ggtitle("correlation matrix")
+
+#first round cleanup
+life<-life %>% select(-BMI) #BMI values makes no sense with many country averages above morbidly obesese
+colnames(life)  #changing some column names
+names(life)[4] <- "LifeExpectancy"
+names(life)[5] <- "AdultMortality"
+names(life)[6] <- "InfantDeaths"
+names(life)[8] <- "PercentExpenditure"
+names(life)[9] <- "HepatitisB"
+names(life)[11] <- "Under5Deaths"
+names(life)[13] <- "TotalExpenditure"
+names(life)[15] <- "HIVAids"
+names(life)[18] <- "thinness1to19"
+names(life)[19] <- "thinness5to9"
+names(life)[20] <- "ICR"
+
+
+#replacing NA's with median values
+
+nm <- names(life)[colSums(is.na(life)) !=0] #shows which columns have na values
+
+life <- life %>% group_by(Year) %>% mutate(LifeExpectancy=ifelse(is.na(LifeExpectancy), median(LifeExpectancy,na.rm=T), LifeExpectancy))
+life<- life %>% group_by(Year) %>% mutate(AdultMortality=ifelse(is.na(AdultMortality), median(AdultMortality,na.rm=T), AdultMortality))
+life<- life %>% group_by(Year) %>% mutate(Alcohol=ifelse(is.na(Alcohol), median(Alcohol,na.rm=T), Alcohol))
+life<- life %>% group_by(Year) %>% mutate(HepatitisB=ifelse(is.na(HepatitisB), median(HepatitisB,na.rm=T), HepatitisB))
+life<- life %>% group_by(Year) %>% mutate(Polio=ifelse(is.na(Polio), median(Polio,na.rm=T), Polio))
+life<- life %>% group_by(Year) %>% mutate(TotalExpenditure=ifelse(is.na(TotalExpenditure), median(TotalExpenditure,na.rm=T), TotalExpenditure))
+life <- life %>% group_by(Year) %>% mutate(Diphtheria=ifelse(is.na(Diphtheria), median(Diphtheria,na.rm=T), Diphtheria))
+life <-life %>% group_by(Year) %>% mutate(GDP=ifelse(is.na(GDP), median(GDP,na.rm=T), GDP))
+#life<- life %>% group_by(Year) %>% mutate(Population=ifelse(is.na(Population), median(population,na.rm=T), Population))
+life<-life %>% group_by(Year) %>% mutate(thinness1to19=ifelse(is.na(thinness1to19), median(thinness1to19,na.rm=T), thinness1to19))
+life<-life %>% group_by(Year) %>% mutate(thinness5to9=ifelse(is.na(thinness5to9), median(thinness5to9,na.rm=T), thinness5to9))
+life<-life %>% group_by(Year) %>% mutate(ICR=ifelse(is.na(ICR), median(ICR,na.rm=T), ICR))
+life<-life %>% group_by(Year) %>% mutate(Schooling=ifelse(is.na(Schooling), median(Schooling,na.rm=T), Schooling))
+
+life<-life %>% select(-Population) #remove population for being an annoyance and having over 600 missing values
+nm <- names(life)[colSums(is.na(life)) !=0] #checking for missed Na's
+view(life)
+summary(life)
+
+#remove rows that have impossible values
+#using summary statistics, these variables are Infant deaths, measles, under-5 deaths
+#left with 2413 rows after filtering
+summary(life)
+life = filter(life, InfantDeaths < 1000)
+life = filter(life, Under5Deaths < 1000)
+life = filter(life, Measles < 1000)
+
+
+#testing for Collinearity
+attach(life)
+life %>% plot_correlation() + ggtitle("correlation matrix")
+
+full.model <- lm(LifeExpectancy~Year+Status+AdultMortality+InfantDeaths+Alcohol+PercentExpenditure+HepatitisB+Measles+Under5Deaths+Polio+TotalExpenditure+Diphtheria+HIVAids+GDP+thinness1to19+thinness5to9+ICR+Schooling,data=life)
+summary(full.model)
+vif(full.model) #strong VIF among infantdeaths,  under5deaths, thinness1-19, thinness 5-9
+pairs(life[,c("InfantDeaths","Under5Deaths")]) #collinearity 
+pairs(life[,c("thinness1to19","thinness5to9")]) #collineartiy
+
+#new model removing infant deaths and thinness 5-9
+set.seed(3838)
+indices<-sample(nrow(life), .85*nrow(life))
+train <- life[indices,]
+test <- life[-indices,]
+
+model1 <- lm(LifeExpectancy~Year+Status+AdultMortality+Alcohol+PercentExpenditure+HepatitisB+Measles+Under5Deaths+Polio+TotalExpenditure+Diphtheria+HIVAids+GDP+thinness1to19+ICR+Schooling,data=life)
+summary(model1)
+vif(model1)
+
+#forward selection model using train data
+reg.fwd=regsubsets(LifeExpectancy~Year+Status+AdultMortality+Alcohol+PercentExpenditure+HepatitisB+Measles+Under5Deaths+Polio+TotalExpenditure+Diphtheria+HIVAids+GDP+thinness1to19+ICR+Schooling,data=train,method="forward",nvmax=20)
+summary(reg.fwd)$adjr2
+summary(reg.fwd)$bic
+
+```
+
+
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
